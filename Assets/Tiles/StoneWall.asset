@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b67cf4934b6ade84099bf09ea4d44007, type: 3}
+  m_Name: StoneWall
+  m_EditorClassIdentifier: Assembly-CSharp::Tile
+  tileBase: {fileID: 11400000, guid: a1bc208f341f6574e8feb77cbd9b1a5f, type: 2}
+  methodName: Stone Wall
+  description: Wall tile that's gray stone
+  isMoveable: 0
+  isBreakable: 0
+  hasCollision: 1
+  controllerMoveable: 0
