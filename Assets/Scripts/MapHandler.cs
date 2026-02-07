@@ -40,22 +40,49 @@ public class MapHandler : MonoBehaviour
         for (int i = 0; i < controllerPositions.Count; i++)
         {
             Vector3Int pos = controllerPositions[i];
-            if (findTile(pos).controllerMoveable == true) {
+            if (findTile(pos).controllerMoveable) {
                     Vector3Int newPos = pos + direction;
                     Tile t = findTile(newPos);
-                    Debug.Log("Tile at new position: " + t.name);
-                    if (!(t.hasCollision == true && t.isMoveable == false))
+                    if (!(t.hasCollision))
                     {
                         tilemap.SetTile(newPos, tilemap.GetTile(pos));
                         tilemap.SetTile(pos, null); 
                         controllerPositions.RemoveAt(i);
                         controllerPositions.Insert(i, newPos);
                     }
+                    else if (t.isMoveable) {
+                        if (tryMoveTile(newPos, direction))
+                        {
+                            tilemap.SetTile(newPos, tilemap.GetTile(pos));
+                            tilemap.SetTile(pos, null); 
+                            controllerPositions.RemoveAt(i);
+                            controllerPositions.Insert(i, newPos);
+                        }
+                    }
                     
             } else {
                 Debug.Log("Error");
             }
         } 
+    }
+    public bool tryMoveTile(Vector3Int position, Vector3Int direction)
+    {
+        Vector3Int newPos = position + direction;
+        Tile t = findTile(newPos);
+        if (!(t.hasCollision == true))
+        {
+            tilemap.SetTile(newPos, tilemap.GetTile(position));
+            tilemap.SetTile(position, null); 
+            return true;
+        } else if (t.isMoveable == true) {
+            if (tryMoveTile(newPos, direction))
+            {
+                tilemap.SetTile(newPos, tilemap.GetTile(position));
+                tilemap.SetTile(position, null); 
+                return true;
+            }
+        }
+        return false;
     }
     public Tile findTile(Vector3Int position)
     {
