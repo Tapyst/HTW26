@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 13312, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: Duck Stand
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.Tilemaps.Tile
-  m_Sprite: {fileID: 7646089170432710975, guid: 86307748b77ff654986a33057399d48d, type: 3}
+  m_Sprite: {fileID: 3427114271967980436, guid: 7bbca762724d8b848885942b33a2b7a2, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Transform:
     e00: 1
