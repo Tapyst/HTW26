@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -21,21 +22,21 @@ public class Movement : MonoBehaviour
     private float originalCoyoteTime = 0.2f; // How long after leaving ground player can still jump
     private float coyoteTime; // Current coyote time remaining
     private bool isJumping = false; // True during a jump input window
-    // Dashing values: number of allowed dashes and state flags
+    //=====================MOVEMENT SETTINGS======================
     private float MaxDashes = 1; // Maximum dashes allowed before touching ground
     private float NumDashes = 1; // Current remaining dashes
     public bool canDash = true; // Whether dashing is available (cooldown gating)
     private bool isDashing; // True while a dash coroutine is active
-    private float dashingCooldown = 0f; // Additional cooldown after dash finishes
+    private float dashingCooldown = 0.5f; // Additional cooldown after dash finishes
 
-    private float dashingPower = 40f; // Horizontal velocity applied during dashes
+    private float dashingPower = 20f; // Horizontal velocity applied during dashes
 
     // dashingTime equals time dashing in seconds
     private const float dashingTime = 0.3f;
     // dashGravity = gravity scale applied during dash (affects vertical component)
-    private const float dashGravity = 7f;
+    private const float dashGravity = 2f;
     // dashHeight used to set vertical velocity during directional dashes
-    private const float dashHeight = dashGravity / (2 * dashingTime);
+    private const float dashHeight = 0;//dashGravity / (2 * dashingTime);
 
 
     private bool isWallSliding; // True when the player is attached to a wall and sliding down
@@ -166,25 +167,8 @@ public class Movement : MonoBehaviour
         // Dashing input: Fire1 button triggers a dash; vertical input selects dash type
         if (Input.GetButton("Fire1") && canDash && NumDashes > 0)
         {
-            coyoteTime = 0; // consume ground coyote time when initiating dash
-            if (Input.GetButton("Vertical"))
-            {
-                if (IsGrounded())
-                {
-                    // Ground dash if vertical is held while grounded
-                    StartCoroutine(GroundDash());
-                }
-                else
-                {
-                    // Down dash if vertical is held while airborne
-                    StartCoroutine(DownDash());
-                }
-            }
-            else
-            {
-                // Default up/forward dash
-                StartCoroutine(UpDash());
-            }
+            StartCoroutine(Dash(Input.GetAxisRaw("Vertical")));
+            
             return; // dash started — skip the rest of Update this frame
         }
 
@@ -342,22 +326,28 @@ public class Movement : MonoBehaviour
     }
 
     // Up/forward dash coroutine: sets velocities, gravity, and trail, then resets after time
-    private IEnumerator UpDash()
+    private IEnumerator Dash(float verticalDirection)
     {
         NumDashes -= 1;
         canDash = false;
         isDashing = true;
-        rb.gravityScale = dashGravity; // reduce gravity while dashing upward/forward
+        //IDK why i need a negative here however its fliped otherwise if it ever breaks than thats probaply why
+        rb.gravityScale = -verticalDirection*dashGravity; // reduce gravity while dashing upward/forward
         tr.emitting = true;
+        float direction = -Math.Abs(transform.localScale.y);
+        if(isFacingRight)
+        {
+            direction = 1;
+        }
         if (rb.linearVelocity.x > speed)
         {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + direction * dashingPower, transform.localScale.y * dashHeight);
         } else if (rb.linearVelocity.x < (-1 * speed))
         {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + direction * dashingPower, transform.localScale.y * dashHeight);
         } else
         {
-            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+            rb.linearVelocity = new Vector2(direction * dashingPower, transform.localScale.y * dashHeight);
         }
         yield return new WaitForSeconds(dashingTime);
         if (isDashing == true)
@@ -371,69 +361,7 @@ public class Movement : MonoBehaviour
         canDash = true;
     }
 
-    // Down dash coroutine: negative vertical velocity, inverted gravity while dashing
-    public IEnumerator DownDash()
-    {
-        NumDashes -= 1;
-        canDash = false;
-        isDashing = true;
-        rb.gravityScale = -dashGravity; // negative gravity to push quickly downwards
-        tr.emitting = true;
-        if (rb.linearVelocity.x > speed)
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-        }
-        else if (rb.linearVelocity.x < (-1 * speed))
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-        }
-        else
-        {
-            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-        }
-        yield return new WaitForSeconds(dashingTime);
-        if (isDashing == true)
-        {
-            isDashing = false;
-            // Reduce vertical velocity on finish and restore gravity
-            rb.linearVelocity = new Vector2(0f, (rb.linearVelocity.y / 2));
-            rb.gravityScale = originalGravity;
-        }
-        yield return new WaitForSeconds(dashingCooldown);
-        canDash = true;
-    }
-
-    // Ground dash coroutine: mainly horizontal dash while on ground, gravity zeroed during dash
-    private IEnumerator GroundDash()
-    {
-        NumDashes -= 1;
-        canDash = false;
-        isDashing = true;
-        rb.gravityScale = 0f; // neutral gravity when dashing along ground
-        tr.emitting = true;
-        if (rb.linearVelocity.x > speed)
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-        }
-        else if (rb.linearVelocity.x < (-1 * speed))
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-        }
-        else
-        {
-            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-        }
-        yield return new WaitForSeconds(dashingTime);
-        if (isDashing == true)
-        {
-            isDashing = false;
-            // Stop all velocity and restore gravity after ground dash
-            rb.linearVelocity = new Vector2(0f, 0f);
-            rb.gravityScale = originalGravity;
-        }
-        yield return new WaitForSeconds(dashingCooldown);
-        canDash = true;
-    }
+    
 
     // CancelDash is used when the player presses jump during a dash to interrupt it
     private IEnumerator CancelDash()
