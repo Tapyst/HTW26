@@ -534,7 +534,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 197731430}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b99b25be2d5c1e840a50455e9e6b5d41, type: 3}
+  m_Script: {fileID: 11500000, guid: 280133f9f98f58e4d971330acb5b48d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Movement
   isDead: 0
