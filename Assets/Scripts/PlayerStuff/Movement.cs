@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class Movement : MonoBehaviour
@@ -58,10 +59,10 @@ public class Movement : MonoBehaviour
     }
     private void Update()
     {
-        // if (isDead)
-        // {
-        // isDashing = false;
-        // }
+        if (isDead)
+        {
+        isDashing = false;
+        }
         if (isWallJumping)
         {
             wallJumpTime -= Time.deltaTime;
@@ -84,14 +85,14 @@ public class Movement : MonoBehaviour
             isJumping = true;
             coyoteTime = 0f;
             
-            // if (isDashing)
-            // {
-            //     StartCoroutine(CancelDash());
-            // }
-            // else
-            // {
+            if (isDashing)
+            {
+                StartCoroutine(CancelDash());
+            }
+            else
+            {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpingPower);
-            // }
+            }
         }
         if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f && !isDashing)
         {
@@ -130,27 +131,27 @@ public class Movement : MonoBehaviour
             }
         }
         horizontal = Input.GetAxisRaw("Horizontal");
-        // if (Input.GetButton("Fire1") && canDash && NumDashes > 0)
-        // {
-        //     coyoteTime = 0;
-        //     if (Input.GetButton("Vertical"))
-        //     {
-        //         if (IsGrounded())
-        //         {
-        //             StartCoroutine(GroundDash());
-        //         }
-        //         else
-        //         {
-        //             StartCoroutine(DownDash());
-        //         }
-        //     }
-        //     else
-        //     {
-        //         StartCoroutine(UpDash());
-        //     }
-        //     return;
+        if (Input.GetButton("Fire1") && canDash && NumDashes > 0)
+        {
+            coyoteTime = 0;
+            if (Input.GetButton("Vertical"))
+            {
+                if (IsGrounded())
+                {
+                    StartCoroutine(GroundDash());
+                }
+                else
+                {
+                    StartCoroutine(DownDash());
+                }
+            }
+            else
+            {
+                StartCoroutine(UpDash());
+            }
+            return;
 
-        // }
+        }
        
         WallSlide();
         WallJump();
@@ -285,96 +286,96 @@ public class Movement : MonoBehaviour
         }
     }
 
-    // private IEnumerator UpDash()
-    // {
-    //     NumDashes -= 1;
-    //     canDash = false;
-    //     isDashing = true;
-    //     rb.gravityScale = dashGravity;
-    //     tr.emitting = true;
-    //     if (rb.velocity.x > speed)
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
-    //     } else if (rb.velocity.x < (-1 * speed))
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
-    //     } else
-    //     {
-    //         rb.velocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
-    //     }
-    //     yield return new WaitForSeconds(dashingTime);
-    //     if (isDashing == true)
-    //     {
-    //         isDashing = false;
-    //         rb.velocity = new Vector2(0f, (rb.velocity.y / 1.5f));
-    //         rb.gravityScale = originalGravity;
-    //     }
-    //     yield return new WaitForSeconds(dashingCooldown);
-    //     canDash = true;
-    // }
-    // public IEnumerator DownDash()
-    // {
-    //     NumDashes -= 1;
-    //     canDash = false;
-    //     isDashing = true;
-    //     rb.gravityScale = -dashGravity;
-    //     tr.emitting = true;
-    //     if (rb.velocity.x > speed)
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-    //     }
-    //     else if (rb.velocity.x < (-1 * speed))
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-    //     }
-    //     else
-    //     {
-    //         rb.velocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
-    //     }
-    //     yield return new WaitForSeconds(dashingTime);
-    //     if (isDashing == true)
-    //     {
-    //         isDashing = false;
-    //         rb.velocity = new Vector2(0f, (rb.velocity.y / 2));
-    //         rb.gravityScale = originalGravity;
-    //     }
-    //     yield return new WaitForSeconds(dashingCooldown);
-    //     canDash = true;
-    // }
-    // private IEnumerator GroundDash()
-    // {
-    //     NumDashes -= 1;
-    //     canDash = false;
-    //     isDashing = true;
-    //     rb.gravityScale = 0f;
-    //     tr.emitting = true;
-    //     if (rb.velocity.x > speed)
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-    //     }
-    //     else if (rb.velocity.x < (-1 * speed))
-    //     {
-    //         rb.velocity = new Vector2((rb.velocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-    //     }
-    //     else
-    //     {
-    //         rb.velocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
-    //     }
-    //     yield return new WaitForSeconds(dashingTime);
-    //     if (isDashing == true)
-    //     {
-    //         isDashing = false;
-    //         rb.velocity = new Vector2(0f, 0f);
-    //         rb.gravityScale = originalGravity;
-    //     }
-    //     yield return new WaitForSeconds(dashingCooldown);
-    //     canDash = true;
-    // }
-    // private IEnumerator CancelDash()
-    // {
-    //     rb.velocity = new Vector2(rb.velocity.x, jumpingPower / 1.25f);
-    //     yield return new WaitForSeconds(stopDash);
-    //     isDashing = false;
-    //     rb.gravityScale = originalGravity;
-    // }
+    private IEnumerator UpDash()
+    {
+        NumDashes -= 1;
+        canDash = false;
+        isDashing = true;
+        rb.gravityScale = dashGravity;
+        tr.emitting = true;
+        if (rb.linearVelocity.x > speed)
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+        } else if (rb.linearVelocity.x < (-1 * speed))
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+        } else
+        {
+            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * dashHeight);
+        }
+        yield return new WaitForSeconds(dashingTime);
+        if (isDashing == true)
+        {
+            isDashing = false;
+            rb.linearVelocity = new Vector2(0f, (rb.linearVelocity.y / 1.5f));
+            rb.gravityScale = originalGravity;
+        }
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
+    public IEnumerator DownDash()
+    {
+        NumDashes -= 1;
+        canDash = false;
+        isDashing = true;
+        rb.gravityScale = -dashGravity;
+        tr.emitting = true;
+        if (rb.linearVelocity.x > speed)
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
+        }
+        else if (rb.linearVelocity.x < (-1 * speed))
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
+        }
+        else
+        {
+            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight);
+        }
+        yield return new WaitForSeconds(dashingTime);
+        if (isDashing == true)
+        {
+            isDashing = false;
+            rb.linearVelocity = new Vector2(0f, (rb.linearVelocity.y / 2));
+            rb.gravityScale = originalGravity;
+        }
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
+    private IEnumerator GroundDash()
+    {
+        NumDashes -= 1;
+        canDash = false;
+        isDashing = true;
+        rb.gravityScale = 0f;
+        tr.emitting = true;
+        if (rb.linearVelocity.x > speed)
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
+        }
+        else if (rb.linearVelocity.x < (-1 * speed))
+        {
+            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
+        }
+        else
+        {
+            rb.linearVelocity = new Vector2(transform.localScale.x * dashingPower, transform.localScale.y * -dashHeight / 2);
+        }
+        yield return new WaitForSeconds(dashingTime);
+        if (isDashing == true)
+        {
+            isDashing = false;
+            rb.linearVelocity = new Vector2(0f, 0f);
+            rb.gravityScale = originalGravity;
+        }
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
+    private IEnumerator CancelDash()
+    {
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpingPower / 1.25f);
+        yield return new WaitForSeconds(stopDash);
+        isDashing = false;
+        rb.gravityScale = originalGravity;
+    }
 }
