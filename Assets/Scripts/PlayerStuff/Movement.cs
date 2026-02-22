@@ -8,7 +8,7 @@ public class Movement : MonoBehaviour
     public bool isDead = false; 
 
     // ===============BASIC MOVEMENT==========================
-    private float horizontal; // Current horizontal input (-1..1)
+    private float horizontal; // Current horizontal input [-1,1]
     private float speed = 8f; // Movement speed 
     private float jumpingPower = 16f; // Initial upward velocity when jumping
     private bool isFacingRight = true; // Which direction the sprite is facing
@@ -67,22 +67,10 @@ public class Movement : MonoBehaviour
 
     private void Update()
     {
-        // If player is dead, prevent dashing
+        // If player is dead, reset state to avoid dashing inbetween lives
         if (isDead)
         {
             isDashing = false;
-        }
-
-        // Manage wall jump timing: count down while wall jumping
-        if (isWallJumping)
-        {
-            wallJumpTime -= Time.deltaTime;
-            if (wallJumpTime <= 0) {
-                isWallJumping = false; // end wall-jump state when timer expires
-            }
-        } else
-        {
-            wallJumpTime = originalWallJumpTime; // reset value when not wall-jumping
         }
 
         // While in the air, decrement coyote time
@@ -91,21 +79,26 @@ public class Movement : MonoBehaviour
             coyoteTime -= Time.deltaTime;
         }
 
-        // If currently wall-jumping, skip the rest of Update (locks out normal input)
         if (isWallJumping) {
-            return;
+            // Counts down and stops walljump when timer ends
+            wallJumpTime -= Time.deltaTime; 
+            if (wallJumpTime <= 0) {
+                isWallJumping = false;
+            }
+            return; // skip the rest of Update while wall-jumping to prevent input interference
         }
+        wallJumpTime = originalWallJumpTime; // reset value when not wall-jumping
 
         // Jump input: allows jumping while inside coyote time
         if (Input.GetButton("Jump") && coyoteTime > 0)
         {
             isJumping = true;
-            coyoteTime = 0f; // consume coyote time
-
+            coyoteTime = 0f; // Prevent extra jumps in same coyote time
+            
             if (isDashing)
             {
-                // if dashing, cancel dash to allow upward motion
-                StartCoroutine(CancelDash());
+                StartCoroutine(CancelDash()); //Starts "wave dash" process by cancelling dash prematurely
+                return;
             }
             else
             {
@@ -114,7 +107,7 @@ public class Movement : MonoBehaviour
             }
         }
 
-        // Short hop behavior: releasing jump early reduces vertical velocity
+        // Short hop behavior: releasing jump early reduces vertical velocity, better control
         if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f && !isDashing)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.25f);
@@ -140,12 +133,7 @@ public class Movement : MonoBehaviour
             return;
         }
 
-        // If wall sliding, keep default gravity
-        if (isWallSliding)
-        {
-            // Default gravity if wall sliding
-            rb.gravityScale = originalGravity;
-        }
+        
 
         // Disable trail by default; individual dash coroutines enable it when active
         tr.emitting = false;
@@ -175,12 +163,12 @@ public class Movement : MonoBehaviour
         // Wall interactions
         WallSlide();
         WallJump();
-
-        // Flip sprite according to movement unless currently wall-jumping
-        if (!isWallJumping)
+        if (isWallSliding)
         {
-            Flip();
+            rb.gravityScale = originalGravity; // Default gravity if wall sliding
         }
+        // Flip sprite according to movement
+        Flip();
     }
 
     private void FixedUpdate()
@@ -196,60 +184,42 @@ public class Movement : MonoBehaviour
         float airDrag = speed;
 
         // The next block computes horizontal velocity handling differently based on current direction
+        bool velocityRight = true;
         if (velocity < 0)
         {
             // Work with absolute value for comparisons
             velocity = -1 * velocity;
-            if (!(horizontal != 0)) {
-                airDrag = speed / 15; // small drag when no input in air
-            }
-            if (horizontal > 0)
+        }
+        if (horizontal == 0) {
+            airDrag = speed / 15; // small drag when no input in air
+        } else
+        {
+            airDrag = 0; // removing drag when input opposes current velocity (quick turn)
+        }
+        if (velocity > (speed))
+        {
+            if (IsGrounded())
             {
-                airDrag = 0; // removing drag when input opposes current velocity (quick turn)
-            }
-            if (velocity > (speed))
-            {
-                if (IsGrounded())
-                {
-                    // If moving faster than speed on ground, reduce speed (friction-ish)
-                    rb.linearVelocity = new Vector2((rb.linearVelocity.x / 1.5f), rb.linearVelocity.y);
-                }
-                else
-                {
-                    // In air while fast, add input and air drag to gradually change velocity
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x + (horizontal * speed) + airDrag, rb.linearVelocity.y);
-                }
+                // If moving faster than speed on ground, reduce speed (friction-ish)
+                rb.linearVelocity = new Vector2((rb.linearVelocity.x / 1.5f), rb.linearVelocity.y);
             }
             else
             {
-                // Normal movement: set horizontal velocity according to input
-                rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
-            }
-        } else
-        {
-            // Similar handling when velocity is non-negative
-            if (!(horizontal != 0)) {
-                airDrag = speed / 15;
-            }
-            if (horizontal < 0)
-            {
-                airDrag = 0;
-            }
-            if (velocity > (speed))
-            {
-                if (IsGrounded())
-                {
-                    rb.linearVelocity = new Vector2((rb.linearVelocity.x / 1.5f), rb.linearVelocity.y);
-                }
-                else
+                // In air while fast, add input and air drag to gradually change velocity
+                if (velocityRight)
                 {
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x + (horizontal * speed) - airDrag, rb.linearVelocity.y);
                 }
+                else
+                {
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x + (horizontal * speed) + airDrag, rb.linearVelocity.y);
+                }
             }
-            else
-            {
-                rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
-            }
+        }
+        else
+        {
+            // Normal movement: set horizontal velocity according to input
+            rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
         }
         airDrag = speed; // reset local var (not strictly necessary, keeps behavior consistent)
     }
@@ -274,11 +244,9 @@ public class Movement : MonoBehaviour
             isWallSliding = true;
             // Clamp the downward velocity so wall slide is slower and controllable
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Clamp(rb.linearVelocity.y, -wallSlidingSpeed, float.MaxValue));
+            return;
         }
-        else
-        {
-            isWallSliding = false;
-        }
+        isWallSliding = false;
     }
 
     // Handle wall-jump logic including the short coyote window
