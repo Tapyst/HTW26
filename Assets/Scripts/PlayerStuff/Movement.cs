@@ -5,10 +5,10 @@ using UnityEngine;
 public class Movement : MonoBehaviour
 {
     //=====PLAYER STATES==========
-    public bool isDead = false; 
+    public bool isDead = false;
 
     // ===============BASIC MOVEMENT==========================
-    private float horizontal; // Current horizontal input [-1,1]
+    private float horizontal; // Current horizontal input (-1..1)
     private float speed = 8f; // Movement speed 
     private float jumpingPower = 16f; // Initial upward velocity when jumping
     private bool isFacingRight = true; // Which direction the sprite is facing
@@ -19,7 +19,7 @@ public class Movement : MonoBehaviour
     private float maxFallSpeed = 50f; // Hard cap on falling speed to avoid extreme velocities
 
     //=============COYOTE TIME===================
-    private float originalCoyoteTime = 0.2f; // How long after leaving ground player can still jump
+    private float originalCoyoteTime = 0.1f; // How long after leaving ground player can still jump
     private float coyoteTime; // Current coyote time remaining
     private bool isJumping = false; // True during a jump input window
     //=====================MOVEMENT SETTINGS======================
@@ -29,14 +29,16 @@ public class Movement : MonoBehaviour
     private bool isDashing; // True while a dash coroutine is active
     private float dashingCooldown = 0.5f; // Additional cooldown after dash finishes
 
-    private float dashingPower = 20f; // Horizontal velocity applied during dashes
+    private float dashingPower = 30f; // Horizontal velocity applied during dashes
 
     // dashingTime equals time dashing in seconds
-    private const float dashingTime = 0.3f;
+    private const float dashingTime = 0.1f;
     // dashGravity = gravity scale applied during dash (affects vertical component)
-    private const float dashGravity = 2f;
+    private const float dashGravity = 2;
     // dashHeight used to set vertical velocity during directional dashes
-    private const float dashHeight = 0;//dashGravity / (2 * dashingTime);
+    private const float dashHeight = 0;
+    private const float fallGravityMultiplier = 2.5f;
+    private const float lowJumpGravityMultiplier = 2f;
 
 
     private bool isWallSliding; // True when the player is attached to a wall and sliding down
@@ -67,38 +69,44 @@ public class Movement : MonoBehaviour
 
     private void Update()
     {
-        // If player is dead, reset state to avoid dashing inbetween lives
+        // If player is dead, prevent dashing
         if (isDead)
         {
             isDashing = false;
         }
 
-        // While in the air, decrement coyote time
-        if (!IsGrounded())
+        // Manage wall jump timing: count down while wall jumping
+        if (isWallJumping)
         {
-            coyoteTime -= Time.deltaTime;
+            wallJumpTime -= Time.deltaTime;
+            if (wallJumpTime <= 0)
+            {
+                isWallJumping = false; // end wall-jump state when timer expires
+            }
+        }
+        else
+        {
+            wallJumpTime = originalWallJumpTime; // reset value when not wall-jumping
         }
 
-        if (isWallJumping) {
-            // Counts down and stops walljump when timer ends
-            wallJumpTime -= Time.deltaTime; 
-            if (wallJumpTime <= 0) {
-                isWallJumping = false;
-            }
-            return; // skip the rest of Update while wall-jumping to prevent input interference
+
+
+        // If currently wall-jumping, skip the rest of Update (locks out normal input)
+        if (isWallJumping)
+        {
+            return;
         }
-        wallJumpTime = originalWallJumpTime; // reset value when not wall-jumping
 
         // Jump input: allows jumping while inside coyote time
         if (Input.GetButton("Jump") && coyoteTime > 0)
         {
             isJumping = true;
-            coyoteTime = 0f; // Prevent extra jumps in same coyote time
-            
+            coyoteTime = 0f; // consume coyote time
+
             if (isDashing)
             {
-                StartCoroutine(CancelDash()); //Starts "wave dash" process by cancelling dash prematurely
-                return;
+                // if dashing, cancel dash to allow upward motion
+                StartCoroutine(CancelDash());
             }
             else
             {
@@ -107,7 +115,7 @@ public class Movement : MonoBehaviour
             }
         }
 
-        // Short hop behavior: releasing jump early reduces vertical velocity, better control
+        // Short hop behavior: releasing jump early reduces vertical velocity
         if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f && !isDashing)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.25f);
@@ -119,11 +127,10 @@ public class Movement : MonoBehaviour
             coyoteTime = originalCoyoteTime;
             NumDashes = MaxDashes;
             isJumping = false;
-            if (!isDashing)
-            {
-                // Default gravity if standing on a platform
-                rb.gravityScale = originalGravity;
-            }
+        }
+        else
+        {
+            coyoteTime -= Time.deltaTime;
         }
 
         // If dashing, prevent other movement processing and early-return after clearing jumping flag
@@ -133,21 +140,20 @@ public class Movement : MonoBehaviour
             return;
         }
 
-        
+        // If wall sliding, keep default gravity
+        if (isWallSliding)
+        {
+            // Default gravity if wall sliding
+            rb.gravityScale = originalGravity;
+        }
 
         // Disable trail by default; individual dash coroutines enable it when active
         tr.emitting = false;
 
         // Falling: cap max fall speed and increase gravity a bit while falling
-        if (rb.linearVelocity.y < 0)
-        {
-            // Caps maximum fall speed to avoid excessive acceleration
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Max(rb.linearVelocity.y, -maxFallSpeed));
-            if (rb.gravityScale == originalGravity) {
-                // add some extra gravity while falling to make the fall feel snappier
-                rb.gravityScale += rb.gravityScale / 2;
-            }
-        }
+
+        // Caps maximum fall speed to avoid excessive acceleration
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Max(rb.linearVelocity.y, -maxFallSpeed));
 
         // Read horizontal input each frame
         horizontal = Input.GetAxisRaw("Horizontal");
@@ -155,78 +161,68 @@ public class Movement : MonoBehaviour
         // Dashing input: Fire1 button triggers a dash; vertical input selects dash type
         if (Input.GetButton("Fire1") && canDash && NumDashes > 0)
         {
-            StartCoroutine(Dash(Input.GetAxisRaw("Vertical")));
-            
+            if(IsGrounded())    StartCoroutine(Dash(0));
+            else                StartCoroutine(Dash(1));
+
             return; // dash started — skip the rest of Update this frame
         }
 
         // Wall interactions
         WallSlide();
         WallJump();
-        if (isWallSliding)
+
+        // Flip sprite according to movement unless currently wall-jumping
+        if (!isWallJumping)
         {
-            rb.gravityScale = originalGravity; // Default gravity if wall sliding
+            Flip();
         }
-        // Flip sprite according to movement
-        Flip();
+        //gravity modifing 
+        if (isDashing)
+        {
+            //dont do anything
+        }
+        else if (rb.linearVelocity.y < 0)
+        {
+            rb.gravityScale = originalGravity * fallGravityMultiplier;
+        }
+        else if (rb.linearVelocityY > 0 && !Input.GetButton("Jump"))
+        {
+            rb.gravityScale = originalGravity * lowJumpGravityMultiplier;
+        }
+        else
+        {
+            rb.gravityScale = originalGravity;
+        }
     }
 
     private void FixedUpdate()
     {
         // When dashing, physics behavior is handled by dash coroutine; skip regular movement
-        if (isDashing)
-        {
-            return;
-        }
-
-        // Using a double here to preserve some math behavior, then apply to rigidbody
-        double velocity = rb.linearVelocity.x;
-        float airDrag = speed;
-
+        if (isDashing) return;
         // The next block computes horizontal velocity handling differently based on current direction
-        bool velocityRight = true;
-        if (velocity < 0)
+        if (Math.Abs(horizontal) > 0.01f)
         {
-            // Work with absolute value for comparisons
-            velocity = -1 * velocity;
-        }
-        if (horizontal == 0) {
-            airDrag = speed / 15; // small drag when no input in air
-        } else
-        {
-            airDrag = 0; // removing drag when input opposes current velocity (quick turn)
-        }
-        if (velocity > (speed))
-        {
-            if (IsGrounded())
-            {
-                // If moving faster than speed on ground, reduce speed (friction-ish)
-                rb.linearVelocity = new Vector2((rb.linearVelocity.x / 1.5f), rb.linearVelocity.y);
-            }
-            else
-            {
-                // In air while fast, add input and air drag to gradually change velocity
-                if (velocityRight)
-                {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x + (horizontal * speed) - airDrag, rb.linearVelocity.y);
-                }
-                else
-                {
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x + (horizontal * speed) + airDrag, rb.linearVelocity.y);
-                }
-            }
+            float targetSpeed = horizontal * speed;
+            float acceleration;
+            if (IsGrounded() && rb.linearVelocityX > speed) { acceleration = 200; }
+            else if (rb.linearVelocityX > speed) { acceleration = 100; }
+            else if (IsGrounded() && rb.linearVelocityX > speed) { acceleration = 60; }
+            else acceleration = 40;
+            float newXVelosity = Mathf.MoveTowards(rb.linearVelocityX, targetSpeed, acceleration * Time.fixedDeltaTime);
+            rb.linearVelocity = new Vector2(newXVelosity, rb.linearVelocityY);
         }
         else
         {
-            // Normal movement: set horizontal velocity according to input
-            rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
+            float targetSpeed = 0;
+            float acceleration = 70f;
+            float newXVelosity = Mathf.MoveTowards(rb.linearVelocityX, targetSpeed, acceleration * Time.fixedDeltaTime);
+            rb.linearVelocity = new Vector2(newXVelosity, rb.linearVelocityY);
         }
-        airDrag = speed; // reset local var (not strictly necessary, keeps behavior consistent)
     }
 
     // Ground-check helper using a small circle overlap
     private bool IsGrounded()
-    { 
+    {
         return Physics2D.OverlapCircle(groundCheck.position, 0.2f, groundLayer);
     }
 
@@ -244,9 +240,11 @@ public class Movement : MonoBehaviour
             isWallSliding = true;
             // Clamp the downward velocity so wall slide is slower and controllable
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Clamp(rb.linearVelocity.y, -wallSlidingSpeed, float.MaxValue));
-            return;
         }
-        isWallSliding = false;
+        else
+        {
+            isWallSliding = false;
+        }
     }
 
     // Handle wall-jump logic including the short coyote window
@@ -298,38 +296,28 @@ public class Movement : MonoBehaviour
     {
         NumDashes -= 1;
         canDash = false;
+        coyoteTime = 0;
         isDashing = true;
-        //IDK why i need a negative here however its fliped otherwise if it ever breaks than thats probaply why
-        rb.gravityScale = -verticalDirection*dashGravity; // reduce gravity while dashing upward/forward
+        rb.gravityScale = -verticalDirection*dashGravity;
         tr.emitting = true;
         float direction = -Math.Abs(transform.localScale.y);
-        if(isFacingRight)
+        if (isFacingRight)
         {
             direction = 1;
         }
-        if (rb.linearVelocity.x > speed)
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x - speed) + direction * dashingPower, transform.localScale.y * dashHeight);
-        } else if (rb.linearVelocity.x < (-1 * speed))
-        {
-            rb.linearVelocity = new Vector2((rb.linearVelocity.x + speed) + direction * dashingPower, transform.localScale.y * dashHeight);
-        } else
-        {
-            rb.linearVelocity = new Vector2(direction * dashingPower, transform.localScale.y * dashHeight);
-        }
+        rb.linearVelocity = new Vector2(direction * dashingPower, transform.localScale.y * dashHeight);
         yield return new WaitForSeconds(dashingTime);
         if (isDashing == true)
         {
             isDashing = false;
-            // After dash, zero horizontal velocity and reduce vertical to smooth transition
-            rb.linearVelocity = new Vector2(0f, (rb.linearVelocity.y / 1.5f));
+            //After dash, zero horizontal velocity and reduce vertical to smooth transition
             rb.gravityScale = originalGravity;
         }
         yield return new WaitForSeconds(dashingCooldown);
         canDash = true;
     }
 
-    
+
 
     // CancelDash is used when the player presses jump during a dash to interrupt it
     private IEnumerator CancelDash()
