@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    public GameObject player; //The Player
+    private GameObject player; //The Player
     //Time to move camera to player(AKA how fast we move)
     private float smothTime = 0.1f;
     //Defines the distance the camera is from the x,y plane
@@ -16,7 +16,9 @@ public class CameraFollow : MonoBehaviour
     {
         //For now this is just set to the object it is atatched but can be changed if we need diferent/multiple cameras
         cameraObject = gameObject;
+        player = GameObject.FindGameObjectWithTag("Player");
         cameraOfSet = transform.position;
+        gameObject.transform.position = new Vector3(player.transform.position.x,player.transform.position.y,cameraOfSet.z);
     }
 
     // Update is called once per frame
